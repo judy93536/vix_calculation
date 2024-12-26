@@ -9,11 +9,10 @@ CREATE TABLE IF NOT EXISTS backup_log (
     details TEXT
 );
 
--- Function to generate backup filename
 CREATE OR REPLACE FUNCTION generate_backup_filename(backup_type TEXT)
 RETURNS TEXT AS $$
 BEGIN
-    RETURN 'spx_options_' || 
+    RETURN 'spx_eod_daily_options_' || 
            backup_type || '_' || 
            to_char(current_timestamp, 'YYYYMMDD_HH24MISS') || 
            '.backup';
@@ -123,7 +122,7 @@ DECLARE
     cleanup_command TEXT;
 BEGIN
     cleanup_command := format(
-        'find %s -name "spx_options_*.backup" -type f -mtime +%s -delete',
+        'find %s -name "spx_eod_daily_options_*.backup" -type f -mtime +%s -delete',
         backup_dir,
         days_to_keep
     );
@@ -131,6 +130,7 @@ BEGIN
     EXECUTE cleanup_command;
 END;
 $$ LANGUAGE plpgsql;
+
 
 -- Example maintenance schedule using pg_cron
 -- Make sure pg_cron extension is installed: CREATE EXTENSION pg_cron;
@@ -142,7 +142,7 @@ SELECT cron.schedule('full_backup', '0 1 * * 0',
 -- Schedule partition backup for current month every day at 2 AM
 SELECT cron.schedule('partition_backup', '0 2 * * *', 
     $$SELECT backup_partition(
-        'spx_1545_eod_y' || 
+        'spx_eod_daily_options_y' || 
         to_char(current_date, 'YYYY') || 
         'm' || 
         to_char(current_date, 'MM'),

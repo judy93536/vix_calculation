@@ -1,7 +1,5 @@
 # VIX Calculator Implementation
 
-# VIX Calculator Implementation
-
 This project implements the CBOE VIX calculation methodology and data management with specific enhancements for handling:
 
 - SPX option expiration dates

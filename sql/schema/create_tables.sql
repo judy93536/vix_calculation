@@ -1,17 +1,20 @@
+-- Set timezone for session
+SET timezone = 'America/New_York';
+
 -- Create partition management log table
 CREATE TABLE IF NOT EXISTS partition_management_log (
     log_id SERIAL PRIMARY KEY,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     partition_name TEXT,
-    date_range_start TIMESTAMP,
-    date_range_end TIMESTAMP,
+    date_range_start TIMESTAMP WITH TIME ZONE,
+    date_range_end TIMESTAMP WITH TIME ZONE,
     operation TEXT,
     success BOOLEAN,
     details TEXT
 );
 
 -- Create main partitioned options table
-CREATE TABLE spx_1545_eod_new (
+CREATE TABLE spx_eod_daily_options (
     -- Primary key columns
     symbol text NOT NULL,
     quote_date timestamp with time zone NOT NULL,
@@ -88,19 +91,20 @@ CREATE TABLE spx_1545_eod_new (
     mid_diff_1545 double precision,
     
     -- Constraints
-    CONSTRAINT spx_1545_eod_pkey PRIMARY KEY (symbol, quote_date, expiry, strike),
+    CONSTRAINT spx_eod_daily_options_pkey PRIMARY KEY (symbol, quote_date, root, expiry, strike),
     CONSTRAINT valid_strike CHECK (strike > 0),
-    CONSTRAINT valid_dates CHECK (expiry > quote_date),
+    CONSTRAINT valid_dates CHECK (expiry >= quote_date),
     CONSTRAINT valid_dte CHECK (dte >= 0)
 ) PARTITION BY RANGE (quote_date);
 
 -- Create ML/Grafana optimized index
-CREATE INDEX idx_spx_1545_eod_new_ml ON spx_1545_eod_new(quote_date, strike, mid_1545_c, mid_1545_p);
+CREATE INDEX idx_spx_eod_daily_options_ml ON spx_eod_daily_options(quote_date, strike, mid_1545_c, mid_1545_p);
 
--- Create index on ddate for quick lookups
-CREATE INDEX idx_spx_1545_eod_new_ddate ON spx_1545_eod_new(ddate);
+-- Create additional indexes for common queries
+CREATE INDEX idx_spx_eod_daily_options_ddate ON spx_eod_daily_options(ddate);
+CREATE INDEX idx_spx_eod_daily_options_expiry ON spx_eod_daily_options(expiry);
+CREATE INDEX idx_spx_eod_daily_options_strike ON spx_eod_daily_options(strike);
 
 -- Add comments
-COMMENT ON TABLE spx_1545_eod_new IS 'SPX options data partitioned by quote_date with intraday (15:45) and EOD data';
+COMMENT ON TABLE spx_eod_daily_options IS 'SPX options EOD data partitioned by quote_date. Times in America/New_York timezone';
 COMMENT ON TABLE partition_management_log IS 'Tracks partition creation and management operations';
-

@@ -13,9 +13,9 @@ DECLARE
     aws_command TEXT;
     success BOOLEAN;
 BEGIN
-    -- Construct AWS CLI command
+    -- Construct AWS CLI command with new path
     aws_command := format(
-        'aws s3 cp %s s3://%s/spx_options_backups/',
+        'aws s3 cp %s s3://%s/spx_eod_daily_options_backups/',
         backup_file,
         s3_bucket
     );
