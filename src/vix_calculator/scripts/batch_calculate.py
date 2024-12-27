@@ -17,7 +17,7 @@ def get_available_dates(db_conn):
     """Get all available dates from option chain data"""
     query = """
     SELECT DISTINCT ddate 
-    FROM spx_1545_eod 
+    FROM spx_eod_daily_options
     ORDER BY ddate
     """
     with db_conn.get_engine().connect() as conn:

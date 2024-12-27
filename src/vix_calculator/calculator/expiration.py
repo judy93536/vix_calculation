@@ -4,78 +4,137 @@ import numpy as np
 from sqlalchemy import text
 from datetime import datetime
 
-def generate_fridays(start_year: int, end_year: int) -> List[str]:
-    """
-    Generate a list of Friday dates between start_year and end_year.
-    
-    Args:
-        start_year: Starting year
-        end_year: Ending year (inclusive)
-    
-    Returns:
-        List of Friday dates in 'YYYY-MM-DD' format
-    """
-    fridays = []
-    for year in range(start_year, end_year + 1):
+# Generate all Fridays once at module load
+def _generate_all_fridays() -> List[str]:
+    """Generate all Fridays for years 2018-2024."""
+    all_fridays = []
+    for year in range(2018, 2026):  # 2018 to 2024 inclusive
         year_fridays = pd.date_range(start=str(year), end=str(year+1),
                                    freq='W-FRI').strftime('%Y-%m-%d').tolist()[:52]
-        fridays.extend(year_fridays)
-    return fridays
+        all_fridays.extend(year_fridays)
+    return all_fridays
 
-def get_option_data(engine, quote_date: int, dte_min: int = 22, dte_max: int = 38) -> pd.DataFrame:
-    """
-    Fetch SPX option data from database within DTE range.
-    
-    Args:
-        engine: SQLAlchemy database engine
-        quote_date: Trading date in YYYYMMDD format
-        dte_min: Minimum days to expiration
-        dte_max: Maximum days to expiration
-    
-    Returns:
-        DataFrame containing option data
-    """
-    query = """
-    SELECT quote_date, ddate, symbol, root, expiry, dte, strike,
-           bid_eod_c, mid_eod_c, ask_eod_c, bid_eod_p, mid_eod_p, ask_eod_p, mid_diff_eod,
-           open_interest_c, open_interest_p, trade_volume_c, trade_volume_p,
-           implied_volatility_1545_c, implied_volatility_1545_p,
-           active_underlying_price_1545_c, active_underlying_price_1545_p
-    FROM spx_1545_eod
-    WHERE ddate = :quote_date
-    AND dte > :dte_min AND dte < :dte_max
-    AND bid_eod_c != 0 AND bid_eod_p != 0
-    """
-    with engine.connect() as conn:
-        return pd.read_sql(text(query), conn, params={
-            'quote_date': quote_date,
-            'dte_min': dte_min,
-            'dte_max': dte_max
-        })
+# Module-level variable containing all Fridays
+VALID_FRIDAYS = set(_generate_all_fridays())  # Using a set for faster lookups
 
-def select_expiration_dates(options_data: pd.DataFrame, fridays: List[str]) -> Tuple[float, float]:
+def get_option_data(engine, quote_date: int, 
+                   initial_dte_min: int = 22, 
+                   initial_dte_max: int = 38,
+                   max_expansions: int = 12) -> pd.DataFrame:
+    """
+    Fetch SPX option data with DTE range expansion until finding valid Friday expirations.
+    Following CBOE VIX methodology, only uses options expiring on Fridays.
+    """
+    dte_min = initial_dte_min
+    dte_max = initial_dte_max
+    expansion_count = 0
+    
+    while expansion_count < max_expansions:
+        query = """
+        SELECT quote_date, ddate, symbol, root, expiry, dte, strike,
+               bid_eod_c, mid_eod_c, ask_eod_c, bid_eod_p, mid_eod_p, ask_eod_p, mid_diff_eod,
+               open_interest_c, open_interest_p, trade_volume_c, trade_volume_p,
+               implied_volatility_1545_c, implied_volatility_1545_p,
+               active_underlying_price_1545_c, active_underlying_price_1545_p
+        FROM spx_eod_daily_options
+        WHERE ddate = :quote_date
+        AND dte > :dte_min AND dte < :dte_max
+        AND bid_eod_c != 0 AND bid_eod_p != 0
+        ORDER BY dte
+        """
+        
+        with engine.connect() as conn:
+            data = pd.read_sql(text(query), conn, params={
+                'quote_date': quote_date,
+                'dte_min': dte_min,
+                'dte_max': dte_max
+            })
+            
+        # print(f"\nExpansion {expansion_count}: DTE range {dte_min}-{dte_max}, data shape: {data.shape}")
+        
+        if not data.empty:
+            # Reset arrays for each query
+            exp_dates = []
+            dte_values = []
+            
+            # First get unique DTE and expiration combinations
+            unique_exps = data[['dte', 'expiry']].drop_duplicates().sort_values('dte')
+            print(f"Found unique DTEs and expirations:")
+            for _, row in unique_exps.iterrows():
+                expiry_date = pd.Timestamp(row['expiry']).date()
+                expiry_str = str(expiry_date)
+                #print(f"DTE: {row['dte']}, Date: {expiry_date}, Is Friday: {expiry_str in VALID_FRIDAYS}")
+                
+                # Strict Friday validation using module-level VALID_FRIDAYS
+                if expiry_str in VALID_FRIDAYS:
+                    exp_dates.append(expiry_date)
+                    dte_values.append(float(row['dte']))
+            
+            # print(f"\nValid Friday expirations:")
+            # for d, dte in zip(exp_dates, dte_values):
+            #     print(f"Date: {d}, DTE: {dte}")
+            
+            if len(dte_values) >= 2:
+                # Sort DTEs to ensure correct order
+                valid_indices = np.argsort(dte_values)
+                sorted_dates = [exp_dates[i] for i in valid_indices]
+                sorted_dtes = [dte_values[i] for i in valid_indices]
+                
+                # Use the last two (largest) DTEs
+                final_dates = sorted_dates[-2:]
+                final_dtes = sorted_dtes[-2:]
+                
+                # print(f"\nCandidate expirations:")
+                # print(f"Near-term: Date={final_dates[0]}, DTE={final_dtes[0]}")
+                # print(f"Next-term: Date={final_dates[1]}, DTE={final_dtes[1]}")
+                
+                # Check if these DTEs satisfy our requirements
+                # Near-term DTE should be >= 22 (initial_dte_min)
+                if final_dtes[0] >= initial_dte_min:
+                    print(f"Found valid pair of expirations with DTEs: {final_dtes}")
+                    return data
+                else:
+                    print(f"Near-term DTE {final_dtes[0]} is less than minimum {initial_dte_min}, continuing search")
+                
+        # If we get here, expand the range and try again
+        #dte_min -= 1
+        dte_max += 1
+        expansion_count += 1
+        
+        print(f"Expanding range to {dte_min}-{dte_max}")
+    
+    print(f"Failed to find valid expirations after {max_expansions} expansions")
+    return pd.DataFrame()
+
+def select_expiration_dates(options_data: pd.DataFrame, fridays: List[str] = None) -> Tuple[float, float]:
     """
     Select appropriate near-term and next-term expiration dates.
-    
-    Args:
-        options_data: DataFrame containing option data
-        fridays: List of valid Friday expiration dates
-    
-    Returns:
-        Tuple of (dte1, dte2) representing near and next-term DTEs
+    Now uses module-level VALID_FRIDAYS for validation.
     """
-    valid_dtes = []
-    for expiry in options_data.expiry.unique():
-        expiry_date_str = str(pd.Timestamp(expiry).date())
-        if expiry_date_str in fridays:
-            # Get actual DTE for this expiry
-            dte = int(options_data[options_data.expiry == expiry].dte.iloc[0])
-            valid_dtes.append(dte)
+    if options_data.empty:
+        return None, None
+        
+    exp_dates = []
+    dte_values = []
     
-    if len(valid_dtes) >= 2:
-        valid_dtes.sort()
-        return valid_dtes[-2], valid_dtes[-1]
+    # Get unique DTEs and expirations
+    unique_exps = options_data[['dte', 'expiry']].drop_duplicates().sort_values('dte')
+    
+    for _, row in unique_exps.iterrows():
+        expiry_date = pd.Timestamp(row['expiry']).date()
+        if str(expiry_date) in VALID_FRIDAYS:
+            exp_dates.append(expiry_date)
+            dte_values.append(float(row['dte']))
+    
+    if len(dte_values) >= 2:
+        # Sort both lists based on DTE values
+        sorted_indices = np.argsort(dte_values)
+        sorted_dte_values = [dte_values[i] for i in sorted_indices]
+        return sorted_dte_values[-2], sorted_dte_values[-1]
+    
     return None, None
+
+
 
 def validate_expirations(dte1: float, dte2: float, options_data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
@@ -146,5 +205,3 @@ def select_root_symbols(near_calls: pd.DataFrame, next_calls: pd.DataFrame) -> T
         root2 = 'SPXW' if root1 == 'SPX' else 'SPX'
     
     return root1, root2
-
-

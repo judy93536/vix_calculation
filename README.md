@@ -1,121 +1,36 @@
 # VIX Calculator Implementation
 
-This project implements the CBOE VIX calculation methodology and data management with specific enhancements for handling:
+A robust implementation of the CBOE VIX calculation methodology with comprehensive data management capabilities.
 
-- SPX option expiration dates
-- Market holidays and irregular trading hours
-- CMT rate interpolation
-- EOD option chains
-- SFTP data imports from CBOE
-- Treasury rate imports
-- Market data imports
+## Overview
 
-## Project Structure
+This project provides:
 
-```python
-vix_calculator/
-│
-├── src/
-│   └── vix_calculator/
-│       ├── calculator/
-│       │   ├── __init__.py
-│       │   └── vix.py              # Core VIX calculation logic
-│       ├── data/
-│       │   ├── __init__.py
-│       │   ├── database.py         # Database connection handling
-│       │   ├── interest_rates.py   # Interest rate calculations
-│       │   ├── market_data.py      # Market data and metrics
-│       │   ├── importers/          # Data importers
-│       │   │   ├── base_importer.py
-│       │   │   ├── cboe_options_importer.py
-│       │   │   ├── treasury_rates_importer.py
-│       │   │   └── market_data_importer.py
-│       │   └── processors/         # Data processors
-│       │       └── cboe_processor.py
-│       └── production/
-│           ├── __init__.py
-│           ├── vix_runner.py       # VIX calculation script
-│           └── data_import_runner.py # Data import script
-│
-├── sql/                           # Database management
-│   ├── schema/                    # Table definitions
-│   │   ├── create_tables.sql
-│   │   └── partitions.sql
-│   └── maintenance/               # Maintenance procedures
-│       ├── maintenance_procedures.sql
-│       └── backup_procedures.sql
-│
-├── tests/
-│   ├── __init__.py
-│   ├── test_vix.py
-│   └── test_market_data.py
-│
-├── results/
-│   ├── csv/                        # CSV output files
-│   │   └── vix_results_YYYYMMDD_HHMMSS.csv
-│   └── logs/                       # Log files
-│       └── vix_calculator_YYYYMMDD_HHMMSS.log
-│
-├── config/                        # Configuration
-│   ├── config.yaml               # Main configuration
-│   └── config.yaml.example       # Example configuration
-├── requirements.txt
-├── setup.py
-└── README.md
-```
+- Complete VIX calculation following CBOE methodology
+- Automated data management and processing
+- Integration with CBOE data sources
+- Treasury rate handling and interpolation
+- Production-ready scheduling and monitoring
 
-## Features
+## Key Features
 
 ### VIX Calculation
 
-- Accurate VIX calculation matching CBOE methodology
-- Proper handling of SPX/SPXW options
-- Sophisticated interest rate interpolation using CMT rates
-- Support for market holidays
-- Integration with PostgreSQL for data storage
-- Result storage in both database and CSV formats
-- Comprehensive logging and error handling
+- Accurate implementation of CBOE VIX methodology
+- SPX/SPXW options handling
+- CMT rate interpolation
+- Market holiday support
+- Result storage in PostgreSQL and CSV formats
 
 ### Data Management
 
 - Automated SFTP downloads from CBOE
-- Partitioned database storage by date
-- Data validation and integrity checks
 - Treasury rate updates and interpolation
 - Market data synchronization
-- Backup and maintenance procedures
+- Date-partitioned database storage
+- Comprehensive data validation
 
-## Technical Details
-
-### Interest Rate Handling
-
-- Uses CMT (Constant Maturity Treasury) rates
-- Interpolates between appropriate tenors based on DTE
-- Converts to continuous compounding
-- Handles market holidays through date-based interpolation
-
-### Option Chain Processing
-
-- Uses EOD option chains
-- Handles both SPX and SPXW options
-- Selects appropriate strikes around forward price
-- Processes near-term and next-term expirations
-
-### Data Import and Storage
-
-- Daily SFTP downloads of CBOE data
-- Automatic file processing and validation
-- Partitioned storage by date range
-- Data integrity checks and constraints
-
-### Data Requirements
-
-- PostgreSQL database with:
-  - SPX option chains (table: spx_1545_eod)
-  - Treasury rates (table: daily_treasury_par_yield)
-  - VIX results (table: calculated_vix)
-
-## Installation and Setup
+## Installation
 
 1. Clone the repository and create virtual environment:
 
@@ -130,157 +45,152 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-3. Create and configure config/config.yaml:
+3. Create and configure `config/config.yaml`:
 
-```
+```yaml
 database:
   postgres:
-    host: '127.0.0.1'
+    host: "127.0.0.1"
     port: 5432
-    database: 'cboe'
-    user: 'options'
-    password: 'your_password'
+    database: "cboe"
+    user: "options"
+    password: "your_password"
 
 sftp:
   cboe:
-    hostname: 'sftp.datashop.livevol.com'
-    username: 'your_username'
-    password: 'your_password'
-    remote_path: '/your/path/'
+    hostname: "sftp.datashop.livevol.com"
+    username: "your_username"
+    password: "your_password"
+    remote_path: "/your/path/"
 ```
 
 4. Set up database schema:
 
-```
+```bash
 psql -d cboe -f sql/schema/create_tables.sql
 psql -d cboe -f sql/schema/partitions.sql
 ```
 
-### Daily Operations
+## Usage
+
+### Manual Operation
 
 1. Import latest market data:
 
-```
+```bash
 python -m src.vix_calculator.production.data_import_runner
 ```
 
-This will:
-
-- Download new CBOE option chains
-- Update Treasury rates
-- Update market data
-- Process and validate all data
-- Store in partitioned tables
-
 2. Calculate VIX:
 
-```
-python -m src.vix_calculator.production.vix_runner
-```
-
-This will:
-
-- Process all available dates
-- Store results in database
-- Generate CSV output files
-- Create detailed logs
-
-## Database Schema
-
-### Main Tables:
-
-Required tables:
-
-```sql
--- Option chain data
-CREATE TABLE spx_eod_daily_options (
-    symbol text NOT NULL,
-    quote_date timestamp with time zone NOT NULL,
-    ddate bigint NOT NULL,
-    root text NOT NULL,
-    expiry timestamp with time zone NOT NULL,
-    dte bigint NOT NULL,
-    strike double precision NOT NULL,
-    -- [Call and Put option fields]
-    CONSTRAINT spx_eod_daily_options_pkey PRIMARY KEY (symbol, quote_date, root, expiry, strike)
-) PARTITION BY RANGE (quote_date);
-
--- Treasury yield data
-CREATE TABLE daily_treasury_par_yield (
-    date DATE PRIMARY KEY,
-    "1mo" FLOAT,
-    "2mo" FLOAT,
-    "3mo" FLOAT,
-    -- ... other tenors
-);
-
--- Results table
-CREATE TABLE calculated_vix (
-    ddate DATE PRIMARY KEY,
-    timestamp TIMESTAMP WITH TIME ZONE,
-    calculated_vix DOUBLE PRECISION,
-    market_vix DOUBLE PRECISION,
-    -- [Calculation fields]
-    -- Volume metrics
-    call_volume BIGINT,
-    put_volume BIGINT,
-    -- [Additional metrics]
-);
+```bash
+python -m vix_calculator.production.vix_runner
 ```
 
-## Output Files
+### Automated Operation
+
+The project includes automated scheduling via cron jobs for production environments.
+
+1. Set up the alert handler for notifications:
+
+```bash
+# Install required packages
+pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
+
+# Initialize Gmail authentication (one-time setup)
+python alert_handler.py --subject "Test" --body "Testing alerts"
+```
+
+2. Configure cron job:
+
+```bash
+# Edit crontab
+crontab -e
+
+# Add entry to run at 5:00 PM (17:00) Monday through Friday
+0 17 * * 1-5 /raid/vscode_projects/vix_calculator/vix_calculator_cron.sh
+```
+
+The cron job will:
+
+- Download and process new market data
+- Calculate VIX values
+- Store results in database and CSV files
+- Send email notifications for success/failure
+
+### Analysis Tools
+
+Generate VIX analysis for a date range:
+
+```bash
+python -m vix_calculator.analysis.vix_analysis --start-date 2022-07-07 --end-date 2024-07-07
+```
+
+This creates:
+
+- Plots in `results/analysis/plots`
+- CSV files in `results/analysis/csv`
+
+## Project Structure
+
+```
+vix_calculator/
+├── src/                          # Source code
+│   └── vix_calculator/
+│       ├── analysis/            # Analysis tools
+│       ├── calculator/          # VIX calculation
+│       ├── data/               # Data management
+│       └── production/         # Production scripts
+├── sql/                        # Database management
+├── tests/                      # Test suite
+├── results/                    # Output files
+├── config/                     # Configuration
+└── requirements.txt           # Dependencies
+```
+
+## Output and Logging
 
 Results are stored in:
 
-1. Database table: calculated_vix
-2. CSV files: results/csv/vix_results_YYYYMMDD_HHMMSS.csv
-3. Logs: results/logs/vix_calculator_YYYYMMDD_HHMMSS.log
+1. Database: `calculated_vix` table
+2. CSV files: `results/csv/vix_results_YYYYMMDD_HHMMSS.csv`
+3. Logs: `results/logs/vix_calculator_YYYYMMDD_HHMMSS.log`
 
-## Maintenance Procedures
+## Database Schema
 
-### Database Maintenance
+Required tables:
 
-- Monitor partition sizes and growth
+- `spx_eod_daily_options`: Option chain data
+- `daily_treasury_par_yield`: Treasury rates
+- `calculated_vix`: VIX calculation results
+
+See SQL schema files for detailed structure.
+
+## Maintenance
+
+### Database
+
+- Monitor partition growth
 - Regular integrity checks
-- Data validation procedures
-- Backup and recovery procedures
+- Backup procedures
 
 ### Data Updates
 
 - Daily CBOE data imports
 - Treasury rate updates
 - Market data synchronization
-- Results verification
-
-### Visualization
-
-- Direct plotting using matplotlib
-- Database storage for Grafana visualization
-- Comparison with actual VIX index
-- CSV exports for external analysis tools
 
 ## Error Handling
 
-The system includes comprehensive error handling for:
+Comprehensive error handling for:
 
-- SFTP connection issues
-- Data validation failures
+- SFTP connections
+- Data validation
 - Calculation anomalies
-- Database constraints
+- Database operations
 - File system operations
 
-### Logging
-
-Detailed logging is provided for:
-
-- Data imports and processing
-- Calculation steps and results
-- Database operations
-- Error conditions and resolutions
-
 ## Python Usage Examples
-
-### Basic VIX Calculation
 
 ```python
 from vix_calculator import VixCalculator
@@ -294,29 +204,11 @@ calculator = VixCalculator(db_conn.get_engine())
 result = calculator.calculate(date(2020, 3, 24))
 ```
 
-### Production Runner
+## Support and Documentation
 
-To run full calculations with logging and storage:
+For more information:
 
-```bash
-python -m vix_calculator.production.vix_runner
-```
-
-This will:
-
-1. Process all available dates
-2. Store results in database
-3. Generate CSV output files
-4. Create detailed logs
-
-### Data Import
-
-```
-from vix_calculator.data.importers import CboeOptionsImporter
-
-# Initialize importer
-importer = CboeOptionsImporter('config/config.yaml')
-
-# Run import
-importer.import_data()
-```
+- Check CBOE VIX white paper
+- Review code documentation
+- See test cases for examples
+- Contact repository maintainers

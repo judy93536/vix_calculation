@@ -85,7 +85,7 @@ class OptionDataRepository:
                mid_diff_eod, open_interest_c, open_interest_p, trade_volume_c, trade_volume_p,
                implied_volatility_1545_c, implied_volatility_1545_p,
                active_underlying_price_1545_c, active_underlying_price_1545_p
-        FROM spx_1545_eod
+        FROM spx_eod_daily_options
         WHERE ddate = %(date)s
         AND dte > %(min_dte)s AND dte < %(max_dte)s
         AND bid_eod_c != 0 AND bid_eod_p != 0
@@ -113,7 +113,7 @@ class OptionDataRepository:
         """
         query = """
         SELECT DISTINCT ddate
-        FROM spx_1545_eod
+        FROM spx_eod_daily_options
         WHERE ddate BETWEEN %(start_date)s AND %(end_date)s
         ORDER BY ddate
         """

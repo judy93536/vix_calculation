@@ -1,0 +1,46 @@
+# SFTP Configuration
+sftp:
+  cboe:
+    hostname: 'sftp.datashop.livevol.com'
+    username: 'username'
+    password: 'password'
+    port: 22
+    remote_path: '/subscriptions/order_000036090/item_000042140/'
+
+# Database Configuration
+database:
+  host: 'localhost'
+  port: 5432
+  database: 'cboe'
+  user: 'username'
+  password: 'password'
+
+# File System Paths
+paths:
+  base_dir: '/raid/Python/CBOE_VIX'
+  spx:
+    base: '/raid/Python/CBOE_VIX/SPX/spx_eod_1545'
+    import: 'import'
+    import_csv: 'import_csv'
+    zip: 'zip'
+    csv: 'csv'
+    logs: 'logs'
+
+# Data Sources
+sources:
+  treasury_rates:
+    url: 'https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/all'
+    update_frequency: 'daily'
+  
+  market_data:
+    yahoo:
+      symbols: ['^VIX', '^SPX']
+      start_date: '2018-01-01'
+      update_frequency: 'daily'
+
+# Logging Configuration
+logging:
+  level: 'INFO'
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+  file_prefix: 'vix_calculator'
+

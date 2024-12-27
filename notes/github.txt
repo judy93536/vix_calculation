@@ -1,0 +1,24 @@
+
+12/21/24
+git add .
+git commit -m "Initial commit: VIX Calculator implementation"
+git remote add origin https://github.com/judy93536/vix_calculator.git
+git branch -M main
+git push -u origin main
+
+12/26/24
+git add README.md
+git add src/vix_calculator/data/importers/
+git add src/vix_calculator/data/processors/
+git add sql/schema/
+git add sql/maintenance/
+git commit -m "Updated project structure with data importers and processors. Added comprehensive README documentation."
+git push origin main
+
+12/26/24
+git add README.md
+git add sql/schema/
+git add sql/maintenance/
+git commit -m "Updated sql scripts with new database table name 'spx_eod_daily_options'."
+git push origin main
+

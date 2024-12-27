@@ -65,8 +65,7 @@ class VixRunner:
         """Get all available dates from SPX option data"""
         query = """
         SELECT DISTINCT ddate
-        FROM spx_1545_eod
-        WHERE ddate <= 20181231
+        FROM spx_eod_daily_options
         ORDER BY ddate
         """
         with self.engine.connect() as conn:
@@ -82,7 +81,7 @@ class VixRunner:
         self.logger.info("Starting to process all dates...")
         
         dates = self.get_all_dates()
-        #logger.info(f"Processing {len(dates)} dates")
+        self.logger.info(f"Processing {len(dates)} dates")
         
         results = []
         for calc_date in tqdm(dates):

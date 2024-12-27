@@ -1,9 +1,41 @@
-pandas
-numpy
-sqlalchemy
-psycopg2-binary
-pytest
-black
-flake8
-yfinance
-python-dotenv
+# Core Processing Libraries
+numpy>=2.2.0
+pandas>=2.2.3
+python-dateutil>=2.9.0.post0
+pytz>=2024.2
+
+# Database
+SQLAlchemy>=2.0.36
+psycopg2-binary>=2.9.10
+python-dotenv>=1.0.1
+
+# Data Sources and APIs
+yfinance>=0.2.51
+google-api-python-client>=2.156.0
+google-auth>=2.37.0
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.2.1
+
+# SFTP/File Handling
+paramiko>=3.5.0
+pysftp>=0.2.9
+
+# Data Analysis and Visualization
+matplotlib>=3.10.0
+
+# Testing and Development
+pytest>=8.3.4
+black>=24.10.0
+flake8>=7.1.1
+
+# Configuration
+PyYAML>=6.0.2
+
+# HTTP/Requests
+requests>=2.32.3
+urllib3>=2.2.3
+
+# Progress Bars
+tqdm>=4.67.1
+
+
