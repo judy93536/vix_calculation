@@ -1,0 +1,42 @@
+# Gmail Notification Setup
+
+This document explains how to set up Gmail notifications for the VIX calculator.
+
+## Prerequisites
+
+1. A Google Cloud Project with Gmail API enabled
+2. OAuth 2.0 credentials configured for a desktop application
+
+## Setup Steps
+
+1. Create Google Cloud Project:
+   - Go to [Google Cloud Console](https://console.cloud.google.com)
+   - Create a new project or select existing project
+   - Enable the Gmail API for your project
+
+2. Create OAuth 2.0 credentials:
+   - In Google Cloud Console, go to "APIs & Services" → "Credentials"
+   - Click "Create Credentials" → "OAuth client ID"
+   - Select "Desktop app" as application type
+   - Download the client configuration file
+
+3. Configure the application:
+   - Rename downloaded file to `client_secret.json`
+   - Place it in your home directory: `/home/your-username/client_secret.json`
+   - Update the path in `alert_handler.py` if different
+
+4. Generate token:
+   ```bash
+   python alert_handler.py --subject "Test" --body "Testing alerts"
+   ```
+   - This will open a browser for OAuth authorization
+   - After authorization, `token.json` will be created
+
+## Security Notes
+
+- Never commit `token.json` or `client_secret.json` to version control
+- These files contain sensitive credentials
+- Both files are listed in `.gitignore`
+- Each deployment needs its own token generation
+
+

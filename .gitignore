@@ -19,11 +19,11 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.pytest_cache/
 
 # Virtual Environment
 venv/
 env/
-venv/
 ENV/
 
 # IDEs
@@ -33,11 +33,29 @@ ENV/
 *.swo
 *~
 
-# Environment variables
+# Environment and Secrets
 .env
+token.json
+client_secret*.json
+config/config.yaml
+!config/config.yaml.example
 
-# Logs
+# Logs and Results
 *.log
+logs/
+results/analysis/csv/
+results/analysis/plots/
 
 # Local development settings
 .DS_Store
+Thumbs.db
+.coverage
+htmlcov/
+*.sqlite3
+*.db
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
