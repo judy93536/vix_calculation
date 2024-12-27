@@ -99,17 +99,6 @@ class VixCalculator:
         # Convert date to integer format YYYYMMDD
         date_int = int(calculation_date.strftime('%Y%m%d'))
         
-        # # Get option data
-        # #fridays = generate_fridays(calculation_date.year - 1, calculation_date.year + 1)
-        # fridays = _generate_all_fridays()
-        
-        # self.options_data = get_option_data(self.db_connection, date_int)
-        
-        # # Select expiration dates
-        # dte1, dte2 = select_expiration_dates(self.options_data, fridays)
-        # if dte1 is None or dte2 is None:
-        #     raise ValueError(f"Could not find valid expiration dates for {calculation_date}")
-        
         # Get option data
         self.options_data = get_option_data(
             engine=self.db_connection, 
